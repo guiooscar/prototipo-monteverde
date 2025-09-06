@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Inicio - Colegio MonteVerde</title>
+  <link rel="stylesheet" href="../assets/css/base.css" />
+  <link rel="stylesheet" href="../assets/css/layout.css" />
+  <link rel="stylesheet" href="../assets/css/components.css" />
+  <link rel="stylesheet" href="../assets/css/roles.css" />
+</head>
+<body>
+  <!-- Header común -->
+  <div id="header-placeholder"></div>
+
+  <div class="layout-container">
+    <!-- Sidebar docente -->
+    <aside id="sidebar-placeholder"></aside>
+
+    <main class="main-content">
+      <h1>Bienvenido, María R.</h1>
+      <p class="subtitle">Aquí tienes un resumen de tus cursos y tareas pendientes.</p>
+
+      <div class="dashboard-grid">
+        <!-- Tarjeta: Cursos a cargo -->
+        <div class="card">
+          <h3>Tus Cursos</h3>
+          <ul id="lista-cursos">
+            <li>7°B – Matemáticas (28 estudiantes)</li>
+            <li>8°A – Matemáticas (30 estudiantes)</li>
+            <li>8°A – Ciencias Naturales (30 estudiantes)</li>
+          </ul>
+          <a href="calificaciones.html" class="btn-small">Ir a gestión académica</a>
+        </div>
+
+        <!-- Tarjeta: Tareas pendientes -->
+        <div class="card">
+          <h3>Tareas Pendientes</h3>
+          <ul id="tareas-pendientes">
+            <li>📅 Registrar asistencia - 7°B - <strong>hoy</strong></li>
+            <li>📝 Calificar tareas de 8°A - Matemáticas (vence hoy)</li>
+            <li>📤 Enviar boletines - 2025-P2 (próximamente)</li>
+          </ul>
+        </div>
+
+        <!-- Tarjeta: Último mensaje -->
+        <div class="card">
+          <h3>Último Mensaje</h3>
+          <strong id="mensaje-de">Familia de Carlos Pérez</strong>
+          <p id="mensaje-asunto">Consulta sobre tarea no entregada</p>
+          <small>Recibido hoy</small>
+          <a href="mensajes.html" class="btn-small">Responder</a>
+        </div>
+
+        <!-- Tarjeta: Accesos rápidos -->
+        <div class="card">
+          <h3>Accesos Rápidos</h3>
+          <div class="quick-links">
+            <a href="calificaciones.html" class="btn-link">📝 Gestionar Calificaciones</a>
+            <a href="asistencia.html" class="btn-link">✅ Registrar Asistencia</a>
+            <a href="observador.html" class="btn-link">📌 Registrar Observación</a>
+            <a href="mensajes.html" class="btn-link">💬 Mensajería</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notificaciones generales -->
+      <section class="announcements">
+        <h2>Notificaciones del Colegio</h2>
+        <ul>
+          <li><strong>10/09:</strong> Reunión general de docentes a las 4:00 PM.</li>
+          <li><strong>15/09:</strong> Entrega de boletines académicos (P2).</li>
+          <li><strong>20/09:</strong> Salida pedagógica del grupo 8°A.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { DATA } from '../assets/js/mock-data.js';
+    import { loadHeader, loadSidebar } from '../assets/js/app.js';
+
+    console.log("✅ DATA cargada en dashboard.html:", DATA);
+
+    // Cargar header y sidebar
+    await loadHeader('../parciales/header.html', 'María R. (Docente)');
+    await loadSidebar('../parciales/sidebar-docente.html', 'dashboard.html');
+
+    const listaCursos = document.getElementById('lista-cursos');
+    const tareasPendientes = document.getElementById('tareas-pendientes');
+    const mensajeDe = document.getElementById('mensaje-de');
+    const mensajeAsunto = document.getElementById('mensaje-asunto');
+
+    // === Mostrar cursos a cargo ===
+    listaCursos.innerHTML = '';
+    const cursosDocente = DATA.cursos.filter(c => c.id.includes('MAT') || c.id.includes('CIE'));
+    cursosDocente.forEach(curso => {
+      const li = document.createElement('li');
+      li.textContent = `${curso.nombre} (${curso.id.startsWith('7') ? '28' : '30'} estudiantes)`;
+      listaCursos.appendChild(li);
+    });
+
+    // === Mostrar tareas pendientes ===
+    // (Simulación estática, pero se puede dinamizar con más datos)
+    tareasPendientes.innerHTML = `
+      <li>📅 Registrar asistencia - 7°B - <strong>hoy</strong></li>
+      <li>📝 Calificar tareas de 8°A - Matemáticas (vence hoy)</li>
+      <li>📤 Enviar boletines - 2025-P2 (próximamente)</li>
+    `;
+
+    // === Mostrar último mensaje ===
+    if (DATA.mensajes.length > 0) {
+      const ultimoMsg = DATA.mensajes[DATA.mensajes.length - 1];
+      mensajeDe.textContent = ultimoMsg.de;
+      mensajeAsunto.textContent = ultimoMsg.asunto;
+    }
+  </script>
+</body>
+</html>

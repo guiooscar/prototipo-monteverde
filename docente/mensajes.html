@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mensajería - Colegio MonteVerde</title>
+  <link rel="stylesheet" href="../assets/css/base.css" />
+  <link rel="stylesheet" href="../assets/css/layout.css" />
+  <link rel="stylesheet" href="../assets/css/components.css" />
+  <link rel="stylesheet" href="../assets/css/roles.css" />
+</head>
+<body class="docente">
+  <!-- Header común -->
+  <div id="header-placeholder"></div>
+
+  <div class="layout-container docente">
+    <!-- Sidebar docente -->
+    <aside id="sidebar-placeholder"></aside>
+
+    <main class="main-content">
+      <h1>Mensajería</h1>
+
+      <div class="messages-container">
+        <!-- Bandeja de entrada -->
+        <section class="inbox">
+          <h2>Bandeja de Entrada</h2>
+          <button class="btn-primary" id="btn-nuevo-mensaje">Nuevo Mensaje</button>
+          <ul id="lista-mensajes" class="message-list">
+            <!-- Rellenado dinámicamente -->
+          </ul>
+        </section>
+
+        <!-- Detalle del mensaje -->
+        <section class="message-detail" id="detalle-mensaje">
+          <div id="detalle-contenido">
+            <p>Selecciona un mensaje para ver su contenido.</p>
+          </div>
+
+          <div class="reply-box">
+            <h3>Responder</h3>
+            <textarea id="respuesta-texto" placeholder="Escribe tu respuesta aquí..." rows="4"></textarea>
+            <button class="btn-primary" id="btn-responder">Enviar Respuesta</button>
+          </div>
+        </section>
+      </div>
+
+      <!-- Modal: Nuevo mensaje -->
+      <div id="modal-nuevo" class="modal-overlay" style="display: none;">
+        <div class="modal">
+          <h3>Enviar Nuevo Mensaje</h3>
+          <form id="formulario-nuevo-mensaje">
+            <div class="form-group">
+              <label for="destinatario">Para:</label>
+              <select id="destinatario" required>
+                <option value="">Seleccionar destinatario</option>
+                <option value="todos">Todos los padres</option>
+                <option value="7B">Padres del 7°B</option>
+                <option value="8A">Padres del 8°A</option>
+                <option value="familia-carlos">Familia de Carlos Pérez</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="asunto-mensaje">Asunto:</label>
+              <input type="text" id="asunto-mensaje" required placeholder="Ej: Recordatorio de entrega de tareas" />
+            </div>
+            <div class="form-group full-width">
+              <label for="cuerpo-mensaje">Mensaje:</label>
+              <textarea id="cuerpo-mensaje" rows="5" required placeholder="Escribe aquí tu mensaje..."></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn-secondary" id="btn-cancelar">Cancelar</button>
+              <button type="submit" class="btn-primary">Enviar Mensaje</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { DATA } from '../assets/js/mock-data.js';
+    import { loadHeader, loadSidebar } from '../assets/js/app.js';
+
+    console.log("✅ DATA cargada en mensajes.html:", DATA);
+
+    // Cargar header y sidebar
+    await loadHeader('../parciales/header.html', 'María R. (Docente)');
+    await loadSidebar('../parciales/sidebar-docente.html', 'mensajes.html');
+
+    const listaMensajes = document.getElementById('lista-mensajes');
+    const detalleContenido = document.getElementById('detalle-contenido');
+    const respuestaTexto = document.getElementById('respuesta-texto');
+    const btnResponder = document.getElementById('btn-responder');
+    const btnNuevoMensaje = document.getElementById('btn-nuevo-mensaje');
+    const modalNuevo = document.getElementById('modal-nuevo');
+    const btnCancelar = document.getElementById('btn-cancelar');
+    const formularioNuevo = document.getElementById('formulario-nuevo-mensaje');
+
+    // Simulación: cursos que tiene a cargo el docente
+    const cursosDocente = ['7B', '8A'];
+
+    // === Filtrar mensajes para este docente ===
+    function filtrarMensajes() {
+      return DATA.mensajes.filter(mensaje => {
+        // 1. Mensajes enviados por este docente
+        if (mensaje.de === 'Docente' && mensaje.para !== 'Coordinación Académica') return true;
+        // 2. Mensajes recibidos de familias
+        if (mensaje.para === 'Docente') return true;
+        // 3. Mensajes grupales de coordinación
+        if (mensaje.de === 'Coordinación Académica') return true;
+        // 4. Mensajes dirigidos a sus cursos
+        if (cursosDocente.includes(mensaje.para)) return true;
+        return false;
+      });
+    }
+
+    // === Cargar mensajes filtrados ===
+    function cargarMensajes() {
+      const mensajesFiltrados = filtrarMensajes();
+      listaMensajes.innerHTML = '';
+
+      mensajesFiltrados.slice().reverse().forEach(mensaje => {
+        const li = document.createElement('li');
+        li.classList.add('message-item');
+        li.dataset.id = mensaje.id;
+
+        // Determinar tipo de mensaje
+        let tipo, tipoClase;
+        if (mensaje.de === 'Docente') {
+          tipo = '📤 Enviado';
+          tipoClase = 'badge-warning';
+        } else if (mensaje.para === 'Docente') {
+          tipo = '📥 Recibido';
+          tipoClase = 'badge-success';
+        } else {
+          tipo = '📢 Grupo';
+          tipoClase = 'badge-info';
+        }
+
+        const preview = mensaje.preview.length > 80 
+          ? mensaje.preview.substring(0, 77) + '...' 
+          : mensaje.preview;
+
+        li.innerHTML = `
+          <div class="message-header">
+            <strong>${mensaje.para}</strong>
+            <span class="badge ${tipoClase}">${tipo}</span>
+          </div>
+          <small><strong>${mensaje.asunto}</strong></small>
+          <p class="message-preview">${preview}</p>
+        `;
+
+        li.addEventListener('click', () => {
+          abrirDetalle(mensaje);
+          document.querySelectorAll('.message-item').forEach(el => el.classList.remove('selected'));
+          li.classList.add('selected');
+        });
+
+        listaMensajes.appendChild(li);
+      });
+
+      // Abrir el primero por defecto
+      if (mensajesFiltrados.length > 0) {
+        abrirDetalle(mensajesFiltrados[mensajesFiltrados.length - 1]);
+        document.querySelector('.message-item')?.classList.add('selected');
+      }
+    }
+
+    // === Mostrar detalle ===
+    function abrirDetalle(mensaje) {
+      detalleContenido.innerHTML = `
+        <div class="message-header">
+          <strong>De:</strong> ${mensaje.de}
+        </div>
+        <div class="message-header">
+          <strong>Para:</strong> ${mensaje.para}
+        </div>
+        <div class="message-header">
+          <strong>Asunto:</strong> ${mensaje.asunto}
+        </div>
+        <div class="message-body">
+          <p>${mensaje.preview}</p>
+        </div>
+        <div class="message-footer">
+          <small>Recibido el: ${new Date().toLocaleDateString('es-ES')}</small>
+        </div>
+      `;
+    }
+
+    // === Nuevo mensaje ===
+    btnNuevoMensaje.addEventListener('click', () => {
+      modalNuevo.style.display = 'flex';
+    });
+
+    btnCancelar.addEventListener('click', () => {
+      modalNuevo.style.display = 'none';
+      formularioNuevo.reset();
+    });
+
+    formularioNuevo.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const destinatario = document.getElementById('destinatario').selectedOptions[0].text;
+      alert(`✅ Mensaje enviado correctamente a ${destinatario}`);
+      modalNuevo.style.display = 'none';
+      formularioNuevo.reset();
+    });
+
+    // Cerrar modal con clic fuera
+    modalNuevo.addEventListener('click', (e) => {
+      if (e.target === modalNuevo) {
+        modalNuevo.style.display = 'none';
+      }
+    });
+
+    // === Responder ===
+    btnResponder.addEventListener('click', () => {
+      if (respuestaTexto.value.trim() === '') {
+        alert('Por favor, escribe una respuesta antes de enviar.');
+        return;
+      }
+      alert('✅ Tu respuesta ha sido enviada.');
+      respuestaTexto.value = '';
+    });
+
+    // === Inicializar ===
+    cargarMensajes();
+  </script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Registro de Asistencia - Colegio MonteVerde</title>
+  <link rel="stylesheet" href="../assets/css/base.css" />
+  <link rel="stylesheet" href="../assets/css/layout.css" />
+  <link rel="stylesheet" href="../assets/css/components.css" />
+  <link rel="stylesheet" href="../assets/css/roles.css" />
+</head>
+<body>
+  <!-- Header común -->
+  <div id="header-placeholder"></div>
+
+  <div class="layout-container">
+    <!-- Sidebar docente -->
+    <aside id="sidebar-placeholder"></aside>
+
+    <main class="main-content">
+      <h1>Registro de Asistencia</h1>
+
+      <div class="filters">
+        <label for="curso-select">Curso:</label>
+        <select id="curso-select"></select>
+
+        <label for="fecha-select">Fecha:</label>
+        <input type="date" id="fecha-select" />
+      </div>
+
+      <!-- Contenedor donde se inyectará la tabla -->
+      <div id="tabla-asistencia"></div>
+
+      <div class="form-actions">
+        <button class="btn-secondary" onclick="window.history.back()">Cancelar</button>
+        <button class="btn-primary" id="btn-guardar">Guardar</button>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { DATA } from '../assets/js/mock-data.js';
+    import { loadHeader, loadSidebar } from '../assets/js/app.js';
+
+    console.log("✅ DATA cargada en asistencia.html:", DATA);
+
+    // Cargar header y sidebar
+    await loadHeader('../parciales/header.html', 'María R. (Docente)');
+    await loadSidebar('../parciales/sidebar-docente.html', 'asistencia.html');
+
+    const cursoSelect = document.getElementById('curso-select');
+    const fechaSelect = document.getElementById('fecha-select');
+    const tablaAsistencia = document.getElementById('tabla-asistencia');
+    const btnGuardar = document.getElementById('btn-guardar');
+
+    // Llenar select de cursos
+    DATA.cursos.forEach(curso => {
+      const option = document.createElement('option');
+      option.value = curso.id;
+      option.textContent = curso.nombre;
+      cursoSelect.appendChild(option);
+    });
+
+    // Establecer fecha actual por defecto
+    const hoy = new Date().toISOString().split('T')[0];
+    fechaSelect.value = hoy;
+
+    // Función para cargar la tabla de asistencia
+    async function cargarTablaAsistencia() {
+      try {
+        const response = await fetch('../parciales/tabla-asistencia.html');
+        if (!response.ok) throw new Error(`Error al cargar tabla-asistencia.html`);
+        const html = await response.text();
+        tablaAsistencia.innerHTML = html;
+
+        // Pre-cargar datos si existen
+        const cursoId = cursoSelect.value;
+        const fecha = fechaSelect.value;
+        const key = `${cursoId}|${fecha}`;
+        const asistenciaData = DATA.asistencia[key] || {};
+
+        // Rellenar los radios según el estado guardado
+        DATA.estudiantes.forEach(estudiante => {
+          const value = asistenciaData[estudiante.id];
+          const radio = tablaAsistencia.querySelector(`input[name="asistencia-${estudiante.id}"][value="${value}"]`);
+          if (radio) {
+            radio.checked = true;
+          }
+        });
+      } catch (error) {
+        console.error("❌ Error al cargar la tabla de asistencia:", error);
+        tablaAsistencia.innerHTML = '<p class="error">No se pudo cargar la tabla de asistencia.</p>';
+      }
+    }
+
+    // Escuchar cambios
+    cursoSelect.addEventListener('change', cargarTablaAsistencia);
+    fechaSelect.addEventListener('change', cargarTablaAsistencia);
+
+    // Guardar asistencia
+    btnGuardar.addEventListener('click', () => {
+      const cursoId = cursoSelect.value;
+      const fecha = fechaSelect.value;
+      const key = `${cursoId}|${fecha}`;
+
+      const asistencia = {};
+      DATA.estudiantes.forEach(estudiante => {
+        const radio = tablaAsistencia.querySelector(`input[name="asistencia-${estudiante.id}"]:checked`);
+        asistencia[estudiante.id] = radio ? radio.value : 'P'; // Por defecto: Presente
+      });
+
+      // Guardar en DATA (simulado)
+      DATA.asistencia[key] = asistencia;
+
+      alert('✅ Asistencia guardada correctamente.');
+    });
+
+    // Inicializar
+    cargarTablaAsistencia();
+  </script>
+</body>
+</html>

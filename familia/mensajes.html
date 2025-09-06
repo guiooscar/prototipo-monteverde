@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mensajería - Colegio MonteVerde</title>
+  <link rel="stylesheet" href="../assets/css/base.css" />
+  <link rel="stylesheet" href="../assets/css/layout.css" />
+  <link rel="stylesheet" href="../assets/css/components.css" />
+  <link rel="stylesheet" href="../assets/css/roles.css" />
+</head>
+<body class="familia">
+  <!-- Header común -->
+  <div id="header-placeholder"></div>
+
+  <div class="layout-container familia">
+    <!-- Sidebar familia -->
+    <aside id="sidebar-placeholder"></aside>
+
+    <main class="main-content">
+      <h1>Mensajería</h1>
+
+      <div class="messages-container">
+        <!-- Bandeja de entrada -->
+        <section class="inbox">
+          <h2>Bandeja de Entrada</h2>
+          <ul id="lista-mensajes" class="message-list">
+            <!-- Rellenado dinámicamente -->
+          </ul>
+        </section>
+
+        <!-- Detalle del mensaje -->
+        <section class="message-detail" id="detalle-mensaje">
+          <div id="detalle-contenido">
+            <p>Selecciona un mensaje para ver su contenido.</p>
+          </div>
+
+          <div class="reply-box">
+            <h3>Responder al docente</h3>
+            <textarea id="respuesta-texto" placeholder="Escribe tu respuesta aquí..." rows="4"></textarea>
+            <button class="btn-primary" id="btn-responder">Enviar Respuesta</button>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { DATA } from '../assets/js/mock-data.js';
+    import { loadHeader, loadSidebar } from '../assets/js/app.js';
+
+    console.log("✅ DATA cargada en mensajes.html:", DATA);
+
+    // Cargar header y sidebar
+    await loadHeader('../parciales/header.html', 'Carlos M. (Familia)');
+    await loadSidebar('../parciales/sidebar-familia.html', 'mensajes.html');
+
+    const listaMensajes = document.getElementById('lista-mensajes');
+    const detalleContenido = document.getElementById('detalle-contenido');
+    const respuestaTexto = document.getElementById('respuesta-texto');
+    const btnResponder = document.getElementById('btn-responder');
+
+    // === Datos del usuario activo ===
+    const familiaId = DATA.usuarioActivo.id; // 'familia-carlos'
+    const estudiantesIds = DATA.familiaEstudiantes[familiaId] || [];
+    const nombreUsuario = DATA.usuarioActivo.nombre;
+
+    // === Función para verificar si el estudiante pertenece a un curso ===
+    function perteneceACurso(cursoId) {
+      const cursoEstudiantes = {
+        "7B": ["e01"],
+        "8A": ["e03"]
+      };
+      return estudiantesIds.some(id => cursoEstudiantes[cursoId]?.includes(id));
+    }
+
+    // === Filtrar mensajes para este usuario ===
+    function filtrarMensajes() {
+      return DATA.mensajes
+        .filter(mensaje => {
+          // 1. Mensajes para todos
+          if (mensaje.para === "todos") return true;
+          // 2. Mensajes para su curso (ej: 7B, 8A)
+          if (mensaje.para === "7B" && perteneceACurso("7B")) return true;
+          if (mensaje.para === "8A" && perteneceACurso("8A")) return true;
+          // 3. Mensajes directos a este acudiente
+          if (mensaje.para === familiaId) return true;
+          return false;
+        })
+        .reverse(); // Del más reciente al más antiguo
+    }
+
+    // === Cargar bandeja de entrada ===
+    function cargarMensajes() {
+      const mensajesFiltrados = filtrarMensajes();
+      listaMensajes.innerHTML = '';
+
+      if (mensajesFiltrados.length === 0) {
+        const li = document.createElement('li');
+        li.classList.add('empty-state');
+        li.textContent = 'No tienes mensajes recibidos.';
+        listaMensajes.appendChild(li);
+        return;
+      }
+
+      mensajesFiltrados.forEach(mensaje => {
+        const li = document.createElement('li');
+        li.classList.add('message-item');
+        li.dataset.id = mensaje.id;
+
+        // Tipo de mensaje (para mostrar badge)
+        let tipoBadge = '';
+        if (mensaje.para === "todos") {
+          tipoBadge = '<span class="badge badge-info">📢 General</span>';
+        } else if (["7B", "8A"].includes(mensaje.para)) {
+          tipoBadge = `<span class="badge badge-warning">👥 ${mensaje.para}</span>`;
+        } else {
+          tipoBadge = '<span class="badge badge-success">📩 Personal</span>';
+        }
+
+        const preview = mensaje.preview.length > 80 
+          ? mensaje.preview.substring(0, 77) + '...' 
+          : mensaje.preview;
+
+        li.innerHTML = `
+          <div class="message-header">
+            <strong>${mensaje.de}</strong>
+            ${tipoBadge}
+          </div>
+          <small><strong>${mensaje.asunto}</strong></small>
+          <p class="message-preview">${preview}</p>
+        `;
+
+        li.addEventListener('click', () => {
+          abrirDetalle(mensaje);
+          document.querySelectorAll('.message-item').forEach(el => el.classList.remove('selected'));
+          li.classList.add('selected');
+        });
+
+        listaMensajes.appendChild(li);
+      });
+
+      // Abrir el primer mensaje por defecto
+      if (mensajesFiltrados.length > 0) {
+        abrirDetalle(mensajesFiltrados[0]);
+        document.querySelector('.message-item')?.classList.add('selected');
+      }
+    }
+
+    // === Mostrar detalle del mensaje ===
+    function abrirDetalle(mensaje) {
+      detalleContenido.innerHTML = `
+        <div class="message-header">
+          <strong>De:</strong> ${mensaje.de}
+        </div>
+        <div class="message-header">
+          <strong>Asunto:</strong> ${mensaje.asunto}
+        </div>
+        <div class="message-body">
+          <p>${mensaje.preview}</p>
+        </div>
+        <div class="message-footer">
+          <small>Recibido el: ${new Date().toLocaleDateString('es-ES')}</small>
+        </div>
+      `;
+    }
+
+    // === Enviar respuesta ===
+    btnResponder.addEventListener('click', () => {
+      if (respuestaTexto.value.trim() === '') {
+        alert('Por favor, escribe una respuesta antes de enviar.');
+        return;
+      }
+
+      alert('✅ Tu respuesta ha sido enviada al docente.');
+      respuestaTexto.value = '';
+    });
+
+    // === Inicializar ===
+    cargarMensajes();
+  </script>
+</body>
+</html>

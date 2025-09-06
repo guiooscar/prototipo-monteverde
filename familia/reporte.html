@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reporte de Calificaciones - Colegio MonteVerde</title>
+  <link rel="stylesheet" href="../assets/css/base.css" />
+  <link rel="stylesheet" href="../assets/css/layout.css" />
+  <link rel="stylesheet" href="../assets/css/components.css" />
+  <link rel="stylesheet" href="../assets/css/roles.css" />
+</head>
+<body class="familia">
+  <!-- Header común -->
+  <div id="header-placeholder"></div>
+
+  <div class="layout-container familia">
+    <!-- Sidebar familia -->
+    <aside id="sidebar-placeholder"></aside>
+
+    <main class="main-content">
+      <h1>Reporte de Calificaciones</h1>
+
+      <!-- Selector de estudiante (si tiene más de uno) -->
+      <div id="selector-container" style="display: none;" class="filters">
+        <label for="estudiante-select">Estudiante:</label>
+        <select id="estudiante-select"></select>
+      </div>
+
+      <!-- Filtro de periodo -->
+      <div class="filters">
+        <label for="periodo-select">Periodo:</label>
+        <select id="periodo-select"></select>
+      </div>
+
+      <!-- Tabla de calificaciones -->
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Asignatura</th>
+            <th>Calificación</th>
+          </tr>
+        </thead>
+        <tbody id="calificaciones-body">
+          <!-- Rellenado dinámicamente -->
+        </tbody>
+      </table>
+
+      <!-- Resumen -->
+      <div class="summary">
+        <p><strong>Promedio general:</strong> <span id="promedio">—</span></p>
+        <p><strong>Inasistencias en el periodo:</strong> <span id="inasistencias">—</span></p>
+      </div>
+
+      <!-- Observaciones -->
+      <div class="observations">
+        <h3>Observaciones del docente</h3>
+        <p id="observaciones-text">Selecciona un estudiante y un periodo para ver las observaciones.</p>
+      </div>
+
+      <!-- Botón de descarga -->
+      <div class="form-actions">
+        <a href="../docs/boletin-ejemplo.pdf" class="btn-primary" download>Descargar PDF</a>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { DATA } from '../assets/js/mock-data.js';
+    import { loadHeader, loadSidebar } from '../assets/js/app.js';
+
+    console.log("✅ DATA cargada en reporte.html:", DATA);
+
+    // ================== CARGAR DATOS DESDE localStorage ==================
+    function cargarDatosDesdeStorage() {
+      const saved = localStorage.getItem('monteverde-data');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          // Actualizar solo las notas (conservar estructura de DATA)
+          if (parsed.notas) {
+            Object.assign(DATA.notas, parsed.notas);
+            console.log("✅ Notas actualizadas desde localStorage");
+          }
+        } catch (e) {
+          console.error("❌ Error al cargar datos de localStorage", e);
+        }
+      }
+    }
+
+    // Cargar header y sidebar
+    await loadHeader('../parciales/header.html', 'Carlos M. (Familia)');
+    await loadSidebar('../parciales/sidebar-familia.html', 'reporte.html');
+
+    const estudianteSelect = document.getElementById('estudiante-select');
+    const selectorContainer = document.getElementById('selector-container');
+    const periodoSelect = document.getElementById('periodo-select');
+    const calificacionesBody = document.getElementById('calificaciones-body');
+    const promedioSpan = document.getElementById('promedio');
+    const inasistenciasSpan = document.getElementById('inasistencias');
+    const observacionesText = document.getElementById('observaciones-text');
+
+    // === Cargar datos desde localStorage al inicio ===
+    cargarDatosDesdeStorage();
+
+    // === Configurar estudiantes del familiar activo ===
+    const familiaId = DATA.usuarioActivo.id;
+    const estudiantesIds = DATA.familiaEstudiantes[familiaId] || [];
+    const estudiantes = DATA.estudiantes.filter(e => estudiantesIds.includes(e.id));
+
+    // Si tiene más de un hijo, mostrar selector
+    if (estudiantes.length > 1) {
+      selectorContainer.style.display = 'flex';
+      estudiantes.forEach(est => {
+        const option = document.createElement('option');
+        option.value = est.id;
+        option.textContent = est.nombre;
+        estudianteSelect.appendChild(option);
+      });
+      window.estudianteActivo = estudiantes[0].id;
+
+      estudianteSelect.addEventListener('change', () => {
+        window.estudianteActivo = estudianteSelect.value;
+        generarReporte();
+      });
+    } else if (estudiantes.length === 1) {
+      window.estudianteActivo = estudiantes[0].id;
+    } else {
+      alert("No tienes estudiantes asociados.");
+      window.estudianteActivo = null;
+    }
+
+    // Llenar periodos
+    DATA.periodos.forEach(periodo => {
+      const option = document.createElement('option');
+      option.value = periodo;
+      option.textContent = periodo;
+      periodoSelect.appendChild(option);
+    });
+
+    // Función para generar el reporte
+    function generarReporte() {
+      const periodo = periodoSelect.value;
+      const asignaturas = DATA.cursos.filter(c => 
+        Object.keys(DATA.notas).some(key => key.startsWith(c.id) && key.includes(periodo))
+      );
+
+      let totalNotas = 0;
+      let contador = 0;
+      calificacionesBody.innerHTML = '';
+
+      asignaturas.forEach(asignatura => {
+        const key = `${asignatura.id}|${periodo}`;
+        const nota = DATA.notas[key]?.[window.estudianteActivo] || '—';
+
+        if (nota !== '—') {
+          totalNotas += nota;
+          contador++;
+        }
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${asignatura.nombre.split(' – ')[1]}</td>
+          <td>${nota !== '—' ? nota.toFixed(1) : '—'}</td>
+        `;
+        calificacionesBody.appendChild(tr);
+      });
+
+      // Calcular promedio
+      const promedio = contador > 0 ? (totalNotas / contador).toFixed(2) : '—';
+      promedioSpan.textContent = promedio;
+
+      // Calcular inasistencias
+      const anio = periodo.split('-')[0];
+      const fechaKeys = Object.keys(DATA.asistencia).filter(k => k.includes(anio));
+      let totalInasistencias = 0;
+      fechaKeys.forEach(fechaKey => {
+        const asistencia = DATA.asistencia[fechaKey]?.[window.estudianteActivo];
+        if (asistencia === 'A') totalInasistencias++;
+      });
+      inasistenciasSpan.textContent = totalInasistencias;
+
+      // Observaciones
+      const obsList = DATA.observador[window.estudianteActivo] || [];
+      const obsPeriodo = obsList.filter(o => o.fecha.startsWith(anio));
+
+      if (obsPeriodo.length > 0) {
+        observacionesText.innerHTML = obsPeriodo.map(o => `<strong>[${o.tipo}]</strong> ${o.fecha}: ${o.desc}`).join('<br>');
+      } else {
+        observacionesText.textContent = 'No hay observaciones registradas para este periodo.';
+      }
+    }
+
+    // Escuchar cambios en periodo
+    periodoSelect.addEventListener('change', generarReporte);
+
+    // Inicializar
+    if (window.estudianteActivo) {
+      generarReporte();
+    }
+  </script>
+</body>
+</html>

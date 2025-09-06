@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Registro de Calificaciones - Colegio MonteVerde</title>
+  <link rel="stylesheet" href="../assets/css/base.css" />
+  <link rel="stylesheet" href="../assets/css/layout.css" />
+  <link rel="stylesheet" href="../assets/css/components.css" />
+  <link rel="stylesheet" href="../assets/css/roles.css" />
+</head>
+<body>
+  <!-- Header común -->
+  <div id="header-placeholder"></div>
+
+  <div class="layout-container">
+    <!-- Sidebar docente -->
+    <aside id="sidebar-placeholder"></aside>
+
+    <main class="main-content">
+      <h1>Registro de Calificaciones</h1>
+
+      <div class="filters">
+        <label for="curso-select">Curso:</label>
+        <select id="curso-select"></select>
+        <label for="periodo-select">Periodo:</label>
+        <select id="periodo-select"></select>
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Estudiante</th>
+            <th>Nota</th>
+          </tr>
+        </thead>
+        <tbody id="notas-body">
+          <!-- Rellenado dinámicamente -->
+        </tbody>
+      </table>
+
+      <div class="form-actions">
+        <button class="btn-secondary" onclick="window.history.back()">Cancelar</button>
+        <button class="btn-primary" id="btn-guardar">Guardar</button>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    // Importación de módulos
+    import { DATA } from '../assets/js/mock-data.js';
+    import { loadHeader, loadSidebar } from '../assets/js/app.js';
+
+    console.log("✅ DATA cargada:", DATA);
+
+    // Cargar header y sidebar
+    await loadHeader('../parciales/header.html', 'María R. (Docente)');
+    await loadSidebar('../parciales/sidebar-docente.html', 'calificaciones.html');
+
+    const cursoSelect = document.getElementById('curso-select');
+    const periodoSelect = document.getElementById('periodo-select');
+    const notasBody = document.getElementById('notas-body');
+    const btnGuardar = document.getElementById('btn-guardar');
+
+    // ================== PERSISTENCIA: Cargar datos desde localStorage ==================
+    function cargarDatos() {
+      const saved = localStorage.getItem('monteverde-data');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          // Actualizar DATA con los datos guardados
+          Object.assign(DATA.notas, parsed.notas || {});
+          console.log("✅ Datos cargados desde localStorage");
+        } catch (e) {
+          console.warn("⚠️ Error al cargar datos de localStorage", e);
+        }
+      }
+    }
+
+    // ================== GUARDAR DATOS en localStorage ==================
+    function guardarDatos() {
+      try {
+        localStorage.setItem('monteverde-data', JSON.stringify({
+          notas: DATA.notas
+        }));
+        console.log("✅ Datos guardados en localStorage");
+      } catch (e) {
+        console.error("❌ Error al guardar en localStorage", e);
+        alert('Error al guardar los datos. Verifique el espacio de almacenamiento.');
+      }
+    }
+
+    // ================== LLENAR SELECTORES ==================
+    DATA.cursos.forEach(curso => {
+      const option = document.createElement('option');
+      option.value = curso.id;
+      option.textContent = curso.nombre;
+      cursoSelect.appendChild(option);
+    });
+
+    DATA.periodos.forEach(periodo => {
+      const option = document.createElement('option');
+      option.value = periodo;
+      option.textContent = periodo;
+      periodoSelect.appendChild(option);
+    });
+
+    // ================== CARGAR NOTAS EN LA TABLA ==================
+    function cargarNotas() {
+      const cursoId = cursoSelect.value;
+      const periodoId = periodoSelect.value;
+      const key = `${cursoId}|${periodoId}`;
+      const notasCursoPeriodo = DATA.notas[key] || {};
+
+      notasBody.innerHTML = '';
+      DATA.estudiantes.forEach(estudiante => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${estudiante.nombre}</td>
+          <td>
+            <input 
+              type="number" 
+              step="0.1" 
+              min="1.0" 
+              max="5.0" 
+              value="${notasCursoPeriodo[estudiante.id] !== undefined ? notasCursoPeriodo[estudiante.id].toFixed(1) : ''}" 
+              data-estudiante="${estudiante.id}"
+              placeholder="—"
+            />
+          </td>
+        `;
+        notasBody.appendChild(tr);
+      });
+    }
+
+    // ================== GUARDAR NOTAS ==================
+    function guardarNotas() {
+      const cursoId = cursoSelect.value;
+      const periodoId = periodoSelect.value;
+      const key = `${cursoId}|${periodoId}`;
+
+      // Crear objeto de notas para este curso y periodo
+      const nuevasNotas = {};
+      DATA.estudiantes.forEach(estudiante => {
+        const input = notasBody.querySelector(`input[data-estudiante="${estudiante.id}"]`);
+        const value = input.value.trim();
+        if (value !== '') {
+          const nota = parseFloat(value);
+          if (nota >= 1.0 && nota <= 5.0) {
+            nuevasNotas[estudiante.id] = nota;
+          } else {
+            alert(`La nota de ${estudiante.nombre} debe estar entre 1.0 y 5.0`);
+            input.focus();
+            throw new Error('Nota fuera de rango');
+          }
+        }
+      });
+
+      // Guardar en DATA
+      DATA.notas[key] = nuevasNotas;
+
+      // Persistir en localStorage
+      guardarDatos();
+
+      alert('✅ Notas guardadas correctamente.');
+    }
+
+    // ================== LISTENERS ==================
+    cursoSelect.addEventListener('change', cargarNotas);
+    periodoSelect.addEventListener('change', cargarNotas);
+    btnGuardar.addEventListener('click', () => {
+      try {
+        guardarNotas();
+      } catch (e) {
+        console.error("Error al guardar:", e);
+      }
+    });
+
+    // ================== INICIALIZAR ==================
+    cargarDatos(); // Cargar datos al inicio
+    cargarNotas(); // Mostrar notas actuales
+  </script>
+</body>
+</html>

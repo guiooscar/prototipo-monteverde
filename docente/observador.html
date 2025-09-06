@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Observador del Alumno - Colegio MonteVerde</title>
+  <link rel="stylesheet" href="../assets/css/base.css" />
+  <link rel="stylesheet" href="../assets/css/layout.css" />
+  <link rel="stylesheet" href="../assets/css/components.css" />
+  <link rel="stylesheet" href="../assets/css/roles.css" />
+  <!-- Evita que el navegador muestre texto destacado como advertencia -->
+</head>
+<body>
+  <!-- Header común -->
+  <div id="header-placeholder" aria-label="Cabecera de la página" role="banner"></div>
+
+  <div class="layout-container">
+    <!-- Sidebar docente -->
+    <aside id="sidebar-placeholder" aria-label="Navegación principal" role="navigation"></aside>
+
+    <main class="main-content" role="main">
+      <h1>Observador del Alumno</h1>
+
+      <div class="filters">
+        <label for="estudiante-select">Buscar estudiante:</label>
+        <select id="estudiante-select" aria-required="true">
+          <option value="" disabled selected>Seleccionar estudiante...</option>
+          <!-- Rellenado dinámicamente -->
+        </select>
+      </div>
+
+      <!-- Formulario para nueva observación -->
+      <section class="form-section" aria-labelledby="nueva-observacion-title">
+        <h2 id="nueva-observacion-title">Nueva Observación</h2>
+        <form id="formulario-observacion" class="form-grid" novalidate>
+          <div class="form-group">
+            <label for="tipo-observacion">Tipo de observación:</label>
+            <select id="tipo-observacion" required aria-required="true">
+              <option value="" disabled selected>Seleccionar tipo</option>
+              <option value="Reconocimiento">Reconocimiento</option>
+              <option value="Llamado de atención">Llamado de atención</option>
+              <option value="Observación">Observación</option>
+            </select>
+            <div class="error-message" id="error-tipo" role="alert" aria-live="polite" style="display: none;">
+              Por favor, selecciona un tipo de observación.
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="fecha-observacion">Fecha:</label>
+            <input type="date" id="fecha-observacion" required aria-required="true" />
+            <div class="error-message" id="error-fecha" role="alert" aria-live="polite" style="display: none;">
+              Por favor, selecciona una fecha.
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="descripcion-observacion">Descripción:</label>
+            <textarea 
+              id="descripcion-observacion" 
+              rows="4" 
+              placeholder="Describe brevemente la situación observada..."
+              required
+              aria-required="true"
+              aria-describedby="desc-help"
+            ></textarea>
+            <small id="desc-help">Máximo 300 caracteres.</small>
+            <div class="error-message" id="error-desc" role="alert" aria-live="polite" style="display: none;">
+              La descripción es obligatoria.
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" id="btn-limpiar" aria-label="Limpiar formulario">
+              Limpiar
+            </button>
+            <button type="submit" class="btn-primary" aria-label="Guardar observación">
+              Guardar Observación
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Historial de observaciones -->
+      <section class="observations-container" aria-labelledby="historial-title">
+        <h2 id="historial-title">Historial de Observaciones</h2>
+        <ul id="historial-observaciones" aria-live="polite">
+          <li class="empty-state">Selecciona un estudiante para ver su historial.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { DATA } from '../assets/js/mock-data.js';
+    import { loadHeader, loadSidebar } from '../assets/js/app.js';
+
+    console.log("✅ DATA cargada en observador.html:", DATA);
+
+    // Cargar header y sidebar
+    await loadHeader('../parciales/header.html', 'María R. (Docente)');
+    await loadSidebar('../parciales/sidebar-docente.html', 'observador.html');
+
+    const estudianteSelect = document.getElementById('estudiante-select');
+    const historialObservaciones = document.getElementById('historial-observaciones');
+    const formulario = document.getElementById('formulario-observacion');
+    const tipoObservacion = document.getElementById('tipo-observacion');
+    const fechaObservacion = document.getElementById('fecha-observacion');
+    const descripcionObservacion = document.getElementById('descripcion-observacion');
+    const btnLimpiar = document.getElementById('btn-limpiar');
+
+    // Mostrar errores
+    const errorTipo = document.getElementById('error-tipo');
+    const errorFecha = document.getElementById('error-fecha');
+    const errorDesc = document.getElementById('error-desc');
+
+    // Llenar select de estudiantes
+    DATA.estudiantes.forEach(estudiante => {
+      const option = document.createElement('option');
+      option.value = estudiante.id;
+      option.textContent = estudiante.nombre;
+      estudianteSelect.appendChild(option);
+    });
+
+    // Mostrar historial de un estudiante
+    function mostrarHistorial(estudianteId) {
+      if (!estudianteId) {
+        historialObservaciones.innerHTML = '<li class="empty-state">Selecciona un estudiante para ver su historial.</li>';
+        return;
+      }
+
+      const obsList = DATA.observador[estudianteId] || [];
+      historialObservaciones.innerHTML = '';
+
+      if (obsList.length === 0) {
+        historialObservaciones.innerHTML = '<li class="empty-state">No hay observaciones registradas para este estudiante.</li>';
+        return;
+      }
+
+      obsList.reverse().forEach(observacion => {
+        const li = document.createElement('li');
+        li.classList.add('observation-item');
+        li.setAttribute('role', 'article');
+
+        const badgeClass = 
+          observacion.tipo === 'Reconocimiento' ? 'badge-success' :
+          observacion.tipo === 'Llamado de atención' ? 'badge-error' : 'badge-warning';
+
+        li.innerHTML = `
+          <div class="observation-header">
+            <strong class="badge ${badgeClass}">${observacion.tipo}</strong>
+            <small>${new Date(observacion.fecha).toLocaleDateString('es-ES')}</small>
+          </div>
+          <p class="observation-desc">${observacion.desc}</p>
+        `;
+        historialObservaciones.appendChild(li);
+      });
+    }
+
+    // Escuchar cambio de estudiante
+    estudianteSelect.addEventListener('change', () => {
+      mostrarHistorial(estudianteSelect.value);
+
+      // Pre-llenar fecha con hoy
+      if (estudianteSelect.value) {
+        const hoy = new Date().toISOString().split('T')[0];
+        fechaObservacion.value = hoy;
+      }
+    });
+
+    // Validación y envío del formulario
+    formulario.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      // Resetear errores
+      errorTipo.style.display = 'none';
+      errorFecha.style.display = 'none';
+      errorDesc.style.display = 'none';
+
+      let isValid = true;
+
+      if (!tipoObservacion.value) {
+        errorTipo.style.display = 'block';
+        isValid = false;
+      }
+      if (!fechaObservacion.value) {
+        errorFecha.style.display = 'block';
+        isValid = false;
+      }
+      if (!descripcionObservacion.value.trim()) {
+        errorDesc.style.display = 'block';
+        isValid = false;
+      }
+
+      const estudianteId = estudianteSelect.value;
+      if (!estudianteId) {
+        alert('⚠️ Por favor, selecciona un estudiante.');
+        return;
+      }
+
+      if (!isValid) return;
+
+      const nuevaObs = {
+        fecha: fechaObservacion.value,
+        tipo: tipoObservacion.value,
+        desc: descripcionObservacion.value.trim()
+      };
+
+      // Añadir al historial (simulado)
+      if (!DATA.observador[estudianteId]) {
+        DATA.observador[estudianteId] = [];
+      }
+      DATA.observador[estudianteId].push(nuevaObs);
+
+      // Actualizar vista
+      mostrarHistorial(estudianteId);
+
+      // Limpiar formulario
+      tipoObservacion.value = '';
+      descripcionObservacion.value = '';
+      fechaObservacion.value = '';
+
+      alert('✅ Observación guardada correctamente.');
+    });
+
+    // Botón limpiar
+    btnLimpiar.addEventListener('click', () => {
+      tipoObservacion.value = '';
+      descripcionObservacion.value = '';
+      fechaObservacion.value = '';
+      errorTipo.style.display = 'none';
+      errorFecha.style.display = 'none';
+      errorDesc.style.display = 'none';
+    });
+
+    // Inicializar
+    mostrarHistorial(null);
+  </script>
+</body>
+</html>

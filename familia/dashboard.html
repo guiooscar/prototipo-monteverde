@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Inicio - Colegio MonteVerde</title>
+  <link rel="stylesheet" href="../assets/css/base.css" />
+  <link rel="stylesheet" href="../assets/css/layout.css" />
+  <link rel="stylesheet" href="../assets/css/components.css" />
+  <link rel="stylesheet" href="../assets/css/roles.css" />
+</head>
+<body class="familia">
+  <!-- Header común -->
+  <div id="header-placeholder"></div>
+
+  <div class="layout-container familia">
+    <!-- Sidebar familia -->
+    <aside id="sidebar-placeholder"></aside>
+
+    <main class="main-content">
+      <h1>Bienvenido, Carlos M.</h1>
+      <p class="subtitle">Aquí tienes un resumen de la información académica de tu hijo/a.</p>
+
+      <!-- Selector de estudiante (solo si tiene más de uno) -->
+      <div id="selector-container" style="display: none; margin-bottom: 1.5rem;">
+        <label for="estudiante-select">Selecciona un estudiante:</label>
+        <select id="estudiante-select">
+          <!-- Opciones generadas dinámicamente -->
+        </select>
+      </div>
+
+      <div class="dashboard-grid">
+        <!-- Tarjeta: Promedio general -->
+        <div class="card">
+          <h3>Promedio General</h3>
+          <div class="card-value" id="promedio-general">—</div>
+          <p>Último periodo: 2025-P2</p>
+          <a href="reporte.html" class="btn-small">Ver boletín completo</a>
+        </div>
+
+        <!-- Tarjeta: Último mensaje -->
+        <div class="card">
+          <h3>Último Mensaje</h3>
+          <strong id="mensaje-de">—</strong>
+          <p id="mensaje-asunto">—</p>
+          <small>Recibido hoy</small>
+          <a href="mensajes.html" class="btn-small">Leer mensaje</a>
+        </div>
+      </div>
+
+      <!-- Anuncios generales -->
+      <section class="announcements">
+        <h2>Noticias del Colegio</h2>
+        <ul>
+          <li><strong>10/09:</strong> Reunión general de padres a las 6:00 PM.</li>
+          <li><strong>20/09:</strong> Salida pedagógica al museo de ciencias.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { DATA } from '../assets/js/mock-data.js';
+    import { loadHeader, loadSidebar } from '../assets/js/app.js';
+
+    console.log("✅ DATA cargada en dashboard.html:", DATA);
+
+    // Cargar header y sidebar
+    await loadHeader('../parciales/header.html', 'Carlos M. (Familia)');
+    await loadSidebar('../parciales/sidebar-familia.html', 'dashboard.html');
+
+    // === Configurar estudiantes del familiar activo ===
+    const familiaId = DATA.usuarioActivo.id;
+    const estudiantesIds = DATA.familiaEstudiantes[familiaId] || [];
+    const estudiantes = DATA.estudiantes.filter(e => estudiantesIds.includes(e.id));
+
+    // Si tiene más de un hijo, mostrar selector
+    if (estudiantes.length > 1) {
+      const selector = document.getElementById('estudiante-select');
+      estudiantes.forEach(est => {
+        const option = document.createElement('option');
+        option.value = est.id;
+        option.textContent = est.nombre;
+        selector.appendChild(option);
+      });
+      document.getElementById('selector-container').style.display = 'block';
+
+      // Establecer el primero como activo inicialmente
+      window.estudianteActivo = estudiantes[0].id;
+
+      // Escuchar cambios en el selector
+      selector.addEventListener('change', (e) => {
+        window.estudianteActivo = e.target.value;
+        renderDashboard(window.estudianteActivo);
+      });
+    } else if (estudiantes.length === 1) {
+      // Solo un estudiante → usarlo como activo
+      window.estudianteActivo = estudiantes[0].id;
+    } else {
+      // Sin estudiantes asociados
+      alert("No tienes estudiantes asociados.");
+      window.estudianteActivo = null;
+    }
+
+    // === Función para renderizar el dashboard según el estudiante ===
+    function renderDashboard(estudianteId) {
+      const periodoActual = '2025-P2';
+      const promedioGeneral = document.getElementById('promedio-general');
+      const mensajeDe = document.getElementById('mensaje-de');
+      const mensajeAsunto = document.getElementById('mensaje-asunto');
+
+      // === Calcular promedio general ===
+      const asignaturas = DATA.cursos.filter(c => 
+        Object.keys(DATA.notas).some(key => key.startsWith(c.id) && key.includes(periodoActual))
+      );
+
+      let totalNotas = 0;
+      let contador = 0;
+      asignaturas.forEach(asignatura => {
+        const key = `${asignatura.id}|${periodoActual}`;
+        const nota = DATA.notas[key]?.[estudianteId];
+        if (nota) {
+          totalNotas += nota;
+          contador++;
+        }
+      });
+
+      const promedio = contador > 0 ? (totalNotas / contador).toFixed(2) : '—';
+      promedioGeneral.textContent = promedio;
+
+      // === Mostrar último mensaje ===
+      if (DATA.mensajes.length > 0) {
+        const ultimoMsg = DATA.mensajes[DATA.mensajes.length - 1];
+        mensajeDe.textContent = ultimoMsg.de;
+        mensajeAsunto.textContent = ultimoMsg.asunto;
+      } else {
+        mensajeDe.textContent = '—';
+        mensajeAsunto.textContent = '—';
+      }
+    }
+
+    // Renderizar inicialmente con el estudiante activo
+    if (window.estudianteActivo) {
+      renderDashboard(window.estudianteActivo);
+    }
+  </script>
+</body>
+</html>
