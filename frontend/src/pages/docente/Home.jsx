@@ -1,8 +1,8 @@
-export default function DocenteHome() {
+export default function FamiliaHome() {
   return (
     <div>
-      <h1>Inicio Docente</h1>
-      <p>Bienvenido/a. Aquí irán accesos rápidos a calificaciones, asistencia y observador.</p>
+      <h1>Inicio Familia</h1>
+      <p>Aquí verás boletines y comunicación con el docente.</p>
     </div>
   )
 }

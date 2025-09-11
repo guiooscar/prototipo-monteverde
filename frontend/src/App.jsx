@@ -12,7 +12,7 @@ export default function App() {
 
       <Route path="/docente" element={<DocenteLayout />}>
         <Route index element={<DocenteHome />} />
-        {/* Ejemplos futuros:
+        {/* Próximas pantallas:
         <Route path="calificaciones" element={<RegistroCalificaciones />} />
         <Route path="asistencia" element={<Asistencia />} />
         <Route path="observador" element={<ObservadorAlumno />} />
@@ -21,7 +21,7 @@ export default function App() {
 
       <Route path="/familia" element={<FamiliaLayout />}>
         <Route index element={<FamiliaHome />} />
-        {/* Futuros:
+        {/* Próximas pantallas:
         <Route path="reporte" element={<ReporteAcademico />} />
         <Route path="comunicacion" element={<Comunicacion />} />
         */}
